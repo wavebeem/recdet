@@ -33,11 +33,27 @@ class Token {
 }
 
 interface TokenizeHelper {
-  (context: TokenizeContext): Token | Loc | void;
+  (): Token | Loc | void;
 }
 
-class TokenizeContext {
-  constructor(readonly input: string, readonly location: Loc) {}
+abstract class Tokenizer {
+  abstract states: Record<string, TokenizeHelper[]>;
+
+  private _state: string[] = [];
+  input: string = "";
+  location: Loc = new Loc(0, 1, 1);
+
+  state() {
+    return this._state[this._state.length - 1];
+  }
+
+  pushState(state: string) {
+    this._state.push(state);
+  }
+
+  popState() {
+    this._state.pop();
+  }
 
   text() {
     return this.input.slice(this.location.offset);
@@ -67,42 +83,24 @@ class TokenizeContext {
   skip(pattern: RegExp) {
     return this._match(undefined, pattern);
   }
-}
-
-abstract class Tokenizer {
-  abstract states: Record<string, TokenizeHelper[]>;
-
-  private _state: string[] = [];
-
-  state() {
-    return this._state[this._state.length - 1];
-  }
-
-  pushState(state: string) {
-    this._state.push(state);
-  }
-
-  popState() {
-    this._state.pop();
-  }
 
   *tokenize(input: string) {
     this._state = ["default"];
+    this.input = input;
     const length = input.length;
-    let loc = new Loc(0, 1, 1);
-    while (loc.offset < length) {
+    this.location = new Loc(0, 1, 1);
+    while (this.location.offset < length) {
       const funcs = this.states[this.state()];
-      const ctx = new TokenizeContext(input, loc);
       for (let i = 0; i < funcs.length; i++) {
         const oldLength = this._state.length;
         const func = funcs[i];
-        const tokLoc = func(ctx);
+        const tokLoc = func();
         if (tokLoc instanceof Token) {
-          loc = tokLoc.end;
+          this.location = tokLoc.end;
           yield tokLoc;
           break;
         } else if (tokLoc instanceof Loc) {
-          loc = tokLoc;
+          this.location = tokLoc;
           break;
         }
         if (oldLength !== this._state.length) {
@@ -111,23 +109,24 @@ abstract class Tokenizer {
         }
         // Last item
         if (i === funcs.length - 1) {
-          throw new Error(`tokenizer error at ${loc}`);
+          // TODO: more context in error message
+          throw new Error(`tokenizer error at ${this.location}`);
         }
       }
     }
-    yield new Token("eof", "", loc, loc);
+    yield new Token("eof", "", this.location, this.location);
   }
 }
 
 class LispTokenizer extends Tokenizer {
   states = {
     default: [
-      (ctx: TokenizeContext) => ctx.match("comment", /;.*\n/),
-      (ctx: TokenizeContext) => ctx.match("lparen", /\(/),
-      (ctx: TokenizeContext) => ctx.match("rparen", /\)/),
-      (ctx: TokenizeContext) => ctx.match("symbol", /[a-z][a-z0-9]*/i),
-      (ctx: TokenizeContext) => ctx.skip(/\s+/),
-      (ctx: TokenizeContext) => ctx.match("any", /./)
+      () => this.match("comment", /;.*\n/),
+      () => this.match("lparen", /\(/),
+      () => this.match("rparen", /\)/),
+      () => this.match("symbol", /[a-z][a-z0-9]*/i),
+      () => this.skip(/\s+/),
+      () => this.match("any", /./)
     ]
   };
 }
