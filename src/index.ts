@@ -17,13 +17,18 @@ class Loc {
     }
     return new Loc(this.offset + text.length, line, column);
   }
+
+  toString() {
+    return `#<Location offset=${this.offset} line=${this.line} column=${this.column}>`;
+  }
 }
 
 class Token {
   constructor(
     readonly type: string,
     readonly text: string,
-    readonly location: Loc
+    readonly start: Loc,
+    readonly end: Loc
   ) {}
 }
 
@@ -48,7 +53,7 @@ class TokenizeContext {
       const [text] = match;
       const loc = this.location.addChunk(text);
       if (type) {
-        return new Token(type, text, loc);
+        return new Token(type, text, this.location, loc);
       }
       return loc;
     }
@@ -93,11 +98,12 @@ abstract class Tokenizer {
         const func = funcs[i];
         const tokLoc = func(ctx);
         if (tokLoc instanceof Token) {
-          loc = tokLoc.location;
+          loc = tokLoc.end;
           yield tokLoc;
           break;
         } else if (tokLoc instanceof Loc) {
           loc = tokLoc;
+          break;
         }
         if (oldLength !== this._state.length) {
           // Pop the state automatically if the tokenize helper didn't match
@@ -109,7 +115,7 @@ abstract class Tokenizer {
         }
       }
     }
-    yield new Token("eof", "", loc);
+    yield new Token("eof", "", loc, loc);
   }
 }
 
@@ -120,6 +126,7 @@ class LispTokenizer extends Tokenizer {
       (ctx: TokenizeContext) => ctx.match("lparen", /\(/),
       (ctx: TokenizeContext) => ctx.match("rparen", /\)/),
       (ctx: TokenizeContext) => ctx.match("symbol", /[a-z][a-z0-9]*/i),
+      (ctx: TokenizeContext) => ctx.skip(/\s+/),
       (ctx: TokenizeContext) => ctx.match("any", /./)
     ]
   };
@@ -150,7 +157,10 @@ class Lisp extends Language {
 }
 
 const input = `\
-(list 1 2 (add a b))\
+(list
+  1
+  2
+  (add a b))
 `;
 console.log(input);
 console.log(Lisp.parse(input));
