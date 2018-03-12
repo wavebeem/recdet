@@ -1,4 +1,4 @@
-class Loc {
+export class Loc {
   constructor(
     readonly offset: number,
     readonly line: number,
@@ -23,7 +23,7 @@ class Loc {
   }
 }
 
-class Token {
+export class Token {
   constructor(
     readonly type: string,
     readonly text: string,
@@ -32,12 +32,8 @@ class Token {
   ) {}
 }
 
-interface TokenizeHelper {
-  (): Token | Loc | void;
-}
-
-abstract class Tokenizer {
-  abstract states: Record<string, TokenizeHelper[]>;
+export abstract class Tokenizer {
+  abstract states: Record<string, (() => Token | Loc | void)[]>;
 
   private _state: string[] = [];
   input: string = "";
@@ -63,6 +59,8 @@ abstract class Tokenizer {
     return new RegExp(`^${pattern.source}`, pattern.flags);
   }
 
+  // TODO: Maybe there's a better way to handle this than returning this ad-hoc
+  // union type? Perhaps a proper algebraic sum type with tags? idk
   private _match(type: string | void, pattern: RegExp): Token | Loc | void {
     const match = this.text().match(this.anchor(pattern));
     if (match) {
@@ -118,48 +116,18 @@ abstract class Tokenizer {
   }
 }
 
-class LispTokenizer extends Tokenizer {
-  states = {
-    default: [
-      () => this.match("comment", /;.*\n/),
-      () => this.match("lparen", /\(/),
-      () => this.match("rparen", /\)/),
-      () => this.match("symbol", /[a-z][a-z0-9]*/i),
-      () => this.skip(/\s+/),
-      () => this.match("any", /./)
-    ]
-  };
-}
 
-class Parser {
+export class Parser {
   parse(tokens: Token[]) {
     return tokens;
   }
 }
 
-class LispParser extends Parser {
-  // ...
-}
 
-class Language {
+export class Language {
   constructor(readonly tokenizer: Tokenizer, readonly parser: Parser) {}
 
   parse(input: string) {
     return this.parser.parse([...this.tokenizer.tokenize(input)]);
   }
 }
-
-class Lisp extends Language {
-  static parse(input: string) {
-    return new Lisp(new LispTokenizer(), new LispParser()).parse(input);
-  }
-}
-
-const input = `\
-(list
-  1
-  2
-  (add a b))
-`;
-console.log(input);
-console.log(Lisp.parse(input));
