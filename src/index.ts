@@ -1,4 +1,4 @@
-export class Loc {
+export class Location {
   constructor(
     readonly offset: number,
     readonly line: number,
@@ -15,11 +15,17 @@ export class Loc {
         column++;
       }
     }
-    return new Loc(this.offset + text.length, line, column);
+    return new Location(this.offset + text.length, line, column);
   }
 
   toString() {
-    return `#<Location offset=${this.offset} line=${this.line} column=${this.column}>`;
+    return `#<Location offset=${this.offset} line=${this.line} column=${
+      this.column
+    }>`;
+  }
+
+  toEnglish() {
+    return `line ${this.line}, column ${this.column}`;
   }
 }
 
@@ -27,17 +33,17 @@ export class Token {
   constructor(
     readonly type: string,
     readonly text: string,
-    readonly start: Loc,
-    readonly end: Loc
+    readonly start: Location,
+    readonly end: Location
   ) {}
 }
 
 export abstract class Tokenizer {
-  abstract states: Record<string, (() => Token | Loc | void)[]>;
+  abstract states: Record<string, (() => Token | Location | void)[]>;
 
   private _state: string[] = [];
   input: string = "";
-  location: Loc = new Loc(0, 1, 1);
+  location: Location = new Location(0, 1, 1);
 
   state() {
     return this._state[this._state.length - 1];
@@ -61,7 +67,7 @@ export abstract class Tokenizer {
 
   // TODO: Maybe there's a better way to handle this than returning this ad-hoc
   // union type? Perhaps a proper algebraic sum type with tags? idk
-  private _match(type: string | void, pattern: RegExp): Token | Loc | void {
+  private _match(type: string | void, pattern: RegExp): Token | Location | void {
     const match = this.text().match(this.anchor(pattern));
     if (match) {
       const [text] = match;
@@ -86,18 +92,18 @@ export abstract class Tokenizer {
     this._state = ["default"];
     this.input = input;
     const length = input.length;
-    this.location = new Loc(0, 1, 1);
+    this.location = new Location(0, 1, 1);
     while (this.location.offset < length) {
       const funcs = this.states[this.state()];
       for (let i = 0; i < funcs.length; i++) {
         const oldLength = this._state.length;
         const func = funcs[i];
-        const tokLoc = func();
+        const tokLoc = func.call(this);
         if (tokLoc instanceof Token) {
           this.location = tokLoc.end;
           yield tokLoc;
           break;
-        } else if (tokLoc instanceof Loc) {
+        } else if (tokLoc instanceof Location) {
           this.location = tokLoc;
           break;
         }
@@ -116,18 +122,41 @@ export abstract class Tokenizer {
   }
 }
 
+// TODO: Close the iterator? idk
+export abstract class Parser<AST> {
+  abstract default(): AST | void;
 
-export class Parser {
-  parse(tokens: Token[]) {
-    return tokens;
+  lastError: string = "<unknown error>";
+  lastToken: Token | void = undefined;
+
+  constructor(readonly tokens: Iterator<Token>) {}
+
+  expected(message: string) {
+    this.lastError = message;
+    return undefined;
   }
-}
 
+  consume(type: string) {
+    const { done, value } = this.tokens.next();
+    if (!done && value.type === type) {
+      this.lastToken = value;
+      return value;
+    }
+    return undefined;
+  }
 
-export class Language {
-  constructor(readonly tokenizer: Tokenizer, readonly parser: Parser) {}
+  // TODO: return more information about failures
+  parse() {
+    const node = this.default();
+    if (node) {
+      return node;
+    }
+    throw new Error(this.errorMessage());
+  }
 
-  parse(input: string) {
-    return this.parser.parse([...this.tokenizer.tokenize(input)]);
+  errorMessage() {
+    console.log(this.lastToken);
+    const loc = this.lastToken ? this.lastToken.start : new Location(0, 1, 1);
+    return `expected ${this.lastError} at ${loc.toEnglish()}`;
   }
 }
