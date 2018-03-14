@@ -67,7 +67,10 @@ export abstract class Tokenizer {
 
   // TODO: Maybe there's a better way to handle this than returning this ad-hoc
   // union type? Perhaps a proper algebraic sum type with tags? idk
-  private _match(type: string | void, pattern: RegExp): Token | Location | void {
+  private _match(
+    type: string | void,
+    pattern: RegExp
+  ): Token | Location | void {
     const match = this.text().match(this.anchor(pattern));
     if (match) {
       const [text] = match;
@@ -88,7 +91,8 @@ export abstract class Tokenizer {
     return this._match(undefined, pattern);
   }
 
-  *tokenize(input: string) {
+  tokenize(input: string) {
+    const ret: Token[] = [];
     this._state = ["default"];
     this.input = input;
     const length = input.length;
@@ -101,7 +105,7 @@ export abstract class Tokenizer {
         const tokLoc = func.call(this);
         if (tokLoc instanceof Token) {
           this.location = tokLoc.end;
-          yield tokLoc;
+          ret.push(tokLoc);
           break;
         } else if (tokLoc instanceof Location) {
           this.location = tokLoc;
@@ -118,7 +122,8 @@ export abstract class Tokenizer {
         }
       }
     }
-    yield new Token("eof", "", this.location, this.location);
+    ret.push(new Token("eof", "", this.location, this.location));
+    return ret;
   }
 }
 
@@ -126,10 +131,11 @@ export abstract class Tokenizer {
 export abstract class Parser<AST> {
   abstract default(): AST | void;
 
+  i: number = 0;
   lastError: string = "<unknown error>";
   lastToken: Token | void = undefined;
 
-  constructor(readonly tokens: Iterator<Token>) {}
+  constructor(readonly tokens: Token[]) {}
 
   expected(message: string) {
     this.lastError = message;
@@ -137,16 +143,17 @@ export abstract class Parser<AST> {
   }
 
   consume(type: string) {
-    const { done, value } = this.tokens.next();
-    if (!done && value.type === type) {
-      this.lastToken = value;
-      return value;
+    const { i, tokens } = this;
+    if (i < tokens.length && tokens[i].type === type) {
+      this.i++;
+      return this.tokens[i];
     }
     return undefined;
   }
 
   // TODO: return more information about failures
   parse() {
+    this.i = 0;
     const node = this.default();
     if (node) {
       return node;

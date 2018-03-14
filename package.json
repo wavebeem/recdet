@@ -4,9 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build": "tsc",
-    "prestart": "tsc",
-    "start": "node build/example.js",
+    "debug": "tsc && node --inspect-brk build/example.js",
+    "start": "tsc && node build/example.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,5 +13,8 @@
   "license": "ISC",
   "devDependencies": {
     "typescript": "^2.7.2"
+  },
+  "dependencies": {
+    "@types/node": "^9.4.7"
   }
 }
