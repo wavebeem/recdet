@@ -38,10 +38,13 @@ export class Token {
   ) {}
 }
 
+type TokenizerRules = Record<string, (() => Token | Location | void)[]>;
+
 export abstract class Tokenizer {
-  abstract states: Record<string, (() => Token | Location | void)[]>;
+  abstract rules: TokenizerRules;
 
   private _state: string[] = [];
+
   input: string = "";
   location: Location = new Location(0, 1, 1);
 
@@ -98,7 +101,7 @@ export abstract class Tokenizer {
     const length = input.length;
     this.location = new Location(0, 1, 1);
     while (this.location.offset < length) {
-      const funcs = this.states[this.state()];
+      const funcs = this.rules[this.state()];
       for (let i = 0; i < funcs.length; i++) {
         const oldLength = this._state.length;
         const func = funcs[i];
@@ -127,15 +130,14 @@ export abstract class Tokenizer {
   }
 }
 
-// TODO: Close the iterator? idk
+// TODO: accumulate multiple failures and concat those on fail
 export abstract class Parser<AST> {
   abstract default(): AST | void;
 
   i: number = 0;
   lastError: string = "<unknown error>";
   lastToken: Token | void = undefined;
-
-  constructor(readonly tokens: Token[]) {}
+  tokens: Token[] = [];
 
   expected(message: string) {
     this.lastError = message;
@@ -152,7 +154,8 @@ export abstract class Parser<AST> {
   }
 
   // TODO: return more information about failures
-  parse() {
+  parseTokens(tokens: Token[]) {
+    this.tokens = tokens;
     this.i = 0;
     const node = this.default();
     if (node) {
@@ -165,5 +168,13 @@ export abstract class Parser<AST> {
     console.log(this.lastToken);
     const loc = this.lastToken ? this.lastToken.start : new Location(0, 1, 1);
     return `expected ${this.lastError} at ${loc.toEnglish()}`;
+  }
+}
+
+export abstract class Language<T extends Tokenizer, R> extends Parser<R> {
+  abstract tokenizer: T;
+
+  parse(input: string) {
+    return super.parseTokens(this.tokenizer.tokenize(input));
   }
 }

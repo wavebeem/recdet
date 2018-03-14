@@ -1,6 +1,6 @@
 import * as util from "util";
 
-import { Tokenizer, Parser, Location } from ".";
+import { Location, Tokenizer, Language } from ".";
 
 function show<T>(value: T) {
   console.log(util.inspect(value, { depth: null, colors: true }));
@@ -8,7 +8,7 @@ function show<T>(value: T) {
 }
 
 class LispTokenizer extends Tokenizer {
-  states = {
+  rules = {
     default: [
       () => this.match("comment", /;.*\n/),
       () => this.match("lparen", /\(/),
@@ -34,7 +34,9 @@ class AST {
   }
 }
 
-class LispParser extends Parser<AST> {
+class Lisp extends Language<LispTokenizer, AST> {
+  tokenizer = new LispTokenizer();
+
   token(type: string) {
     const token = this.consume(type);
     if (token) {
@@ -68,16 +70,16 @@ class LispParser extends Parser<AST> {
     return this.token("symbol") || this.expected("symbol");
   }
 
-  parseLeftParen() {
+  LParen() {
     return this.token("lparen") || this.expected("(");
   }
 
-  parseRightParen() {
+  RParen() {
     return this.token("rparen") || this.expected(")");
   }
 
   List() {
-    const lp = this.parseLeftParen();
+    const lp = this.LParen();
     if (!lp) {
       return undefined;
     }
@@ -86,17 +88,15 @@ class LispParser extends Parser<AST> {
     while ((item = this.Atom())) {
       items.push(item);
     }
-    const rp = this.parseRightParen();
+    const rp = this.RParen();
     if (!rp) {
       return undefined;
     }
     return new AST("list", items, lp.start, rp.end);
   }
-}
 
-class Lisp {
   static parse(input: string) {
-    return new LispParser(new LispTokenizer().tokenize(input)).parse();
+    return new Lisp().parse(input);
   }
 }
 
