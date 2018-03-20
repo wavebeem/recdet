@@ -40,13 +40,15 @@ export class Token {
 
 type TokenizerRules = Record<string, (() => Token | Location | void)[]>;
 
-export abstract class Tokenizer {
-  abstract rules: TokenizerRules;
-
+export class Tokenizer {
   private _state: string[] = [];
-
+  rules: TokenizerRules;
   input: string = "";
   location: Location = new Location(0, 1, 1);
+
+  constructor(getRules: (context: Tokenizer) => TokenizerRules) {
+    this.rules = getRules(this);
+  }
 
   state() {
     return this._state[this._state.length - 1];
@@ -171,8 +173,9 @@ export abstract class Parser<AST> {
   }
 }
 
-export abstract class Language<T extends Tokenizer, R> extends Parser<R> {
-  abstract tokenizer: T;
+export abstract class Language<R> extends Parser<R> {
+  abstract getRules(context: Tokenizer): TokenizerRules;
+  tokenizer: Tokenizer = new Tokenizer(this.getRules.bind(this));
 
   parse(input: string) {
     return super.parseTokens(this.tokenizer.tokenize(input));

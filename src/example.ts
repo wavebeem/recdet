@@ -7,20 +7,6 @@ function show<T>(value: T) {
   return value;
 }
 
-class LispTokenizer extends Tokenizer {
-  rules = {
-    default: [
-      () => this.match("comment", /;.*\n/),
-      () => this.match("lparen", /\(/),
-      () => this.match("rparen", /\)/),
-      () => this.match("number", /[0-9]+/i),
-      () => this.match("symbol", /[a-z][a-z0-9]*/i),
-      () => this.skip(/\s+/),
-      () => this.match("any", /./)
-    ]
-  };
-}
-
 class AST {
   constructor(
     readonly type: string,
@@ -34,8 +20,20 @@ class AST {
   }
 }
 
-class Lisp extends Language<LispTokenizer, AST> {
-  tokenizer = new LispTokenizer();
+class Lisp extends Language<AST> {
+  getRules(ctx: Tokenizer) {
+    return {
+      default: [
+        () => ctx.match("comment", /;.*\n/),
+        () => ctx.match("lparen", /\(/),
+        () => ctx.match("rparen", /\)/),
+        () => ctx.match("number", /[0-9]+/i),
+        () => ctx.match("symbol", /[a-z][a-z0-9]*/i),
+        () => ctx.skip(/\s+/),
+        () => ctx.match("any", /./)
+      ]
+    };
+  }
 
   token(type: string) {
     const token = this.consume(type);
