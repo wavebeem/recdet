@@ -1,6 +1,6 @@
 import * as util from "util";
 
-import { Location, Tokenizer, Language } from ".";
+import { Location, Tokenizer, Result, Token, Language } from ".";
 
 function show<T>(value: T) {
   console.log(util.inspect(value, { depth: null, colors: true }));
@@ -14,6 +14,10 @@ class AST {
     readonly start: Location,
     readonly end: Location
   ) {}
+
+  static fake(type: string, x: any) {
+    return new AST(type, x, Location.FAKE, Location.FAKE);
+  }
 
   map(f: (x: any) => any) {
     return new AST(this.type, f(this.value), this.start, this.end);
@@ -35,62 +39,56 @@ class Lisp extends Language<AST> {
     };
   }
 
-  token(type: string) {
-    const token = this.consume(type);
-    if (token) {
-      return new AST(token.type, token.text, token.start, token.end);
-    }
-    return undefined;
+  token(type: string): Result<AST> {
+    return this.consume(type).map(({ type, text, start, end }) => {
+      return new AST(type, text, start, end);
+    });
   }
 
-  default() {
+  default(): Result<AST> {
     return this.Atom();
   }
 
-  Atom() {
-    return (
-      this.Number() ||
-      this.Symbol() ||
-      this.List() ||
-      this.expected("number, identifier, or list")
-    );
+  Atom(): Result<AST> {
+    return this.Number()
+      .or(() => this.Symbol())
+      .or(() => this.List());
   }
 
-  Number() {
-    const t = this.token("number");
-    if (t) {
-      return t.map(s => +s);
-    }
-    return this.expected("number");
+  Number(): Result<AST> {
+    return this.token("number").map(node => node.map(s => +s));
   }
 
-  Symbol() {
-    return this.token("symbol") || this.expected("symbol");
+  Symbol(): Result<AST> {
+    return this.token("symbol");
   }
 
-  LParen() {
-    return this.token("lparen") || this.expected("(");
+  LParen(): Result<AST> {
+    return this.token("lparen");
   }
 
-  RParen() {
-    return this.token("rparen") || this.expected(")");
+  RParen(): Result<AST> {
+    return this.token("rparen");
   }
 
-  List() {
-    const lp = this.LParen();
-    if (!lp) {
-      return undefined;
-    }
-    const items: AST[] = [];
-    let item = undefined;
-    while ((item = this.Atom())) {
-      items.push(item);
-    }
-    const rp = this.RParen();
-    if (!rp) {
-      return undefined;
-    }
-    return new AST("list", items, lp.start, rp.end);
+  _List(): Result<AST[]> {
+    return this.Atom()
+      .flatMap((item: AST) => {
+        return this._List().map((items: AST[]) => [...items, item]);
+      })
+      .or(() => {
+        return Result.ok([]);
+      });
+  }
+
+  List(): Result<AST> {
+    return this.LParen().flatMap(lp => {
+      return this._List().flatMap(items => {
+        return this.RParen().map(rp => {
+          return new AST("list", items, lp.start, rp.end);
+        });
+      });
+    });
   }
 
   static parse(input: string) {
@@ -104,6 +102,9 @@ const input = `\
   2
   (add a b))
 `;
+
+// const input = `()`;
+
 console.log(input);
 console.log();
 show(Lisp.parse(input));

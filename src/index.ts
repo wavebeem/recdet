@@ -5,6 +5,8 @@ export class Location {
     readonly column: number
   ) {}
 
+  static FAKE = new Location(-1, -1, -1);
+
   addChunk(text: string) {
     let { line, column } = this;
     for (const c of text) {
@@ -134,42 +136,26 @@ export class Tokenizer {
 
 // TODO: accumulate multiple failures and concat those on fail
 export abstract class Parser<AST> {
-  abstract default(): AST | void;
+  abstract default(): Result<AST>;
 
   i: number = 0;
-  lastError: string = "<unknown error>";
-  lastToken: Token | void = undefined;
   tokens: Token[] = [];
 
-  expected(message: string) {
-    this.lastError = message;
-    return undefined;
-  }
-
-  consume(type: string) {
+  consume(type: string): Result<Token> {
     const { i, tokens } = this;
     if (i < tokens.length && tokens[i].type === type) {
       this.i++;
-      return this.tokens[i];
+      return Result.ok(this.tokens[i]);
     }
-    return undefined;
+    return Result.err([this.tokens[i]]);
   }
 
   // TODO: return more information about failures
-  parseTokens(tokens: Token[]) {
+  parseTokens(tokens: Token[]): Result<AST> {
     this.tokens = tokens;
     this.i = 0;
-    const node = this.default();
-    if (node) {
-      return node;
-    }
-    throw new Error(this.errorMessage());
-  }
-
-  errorMessage() {
-    console.log(this.lastToken);
-    const loc = this.lastToken ? this.lastToken.start : new Location(0, 1, 1);
-    return `expected ${this.lastError} at ${loc.toEnglish()}`;
+    return this.default();
+    // throw new Error("what");
   }
 }
 
@@ -179,5 +165,55 @@ export abstract class Language<R> extends Parser<R> {
 
   parse(input: string) {
     return super.parseTokens(this.tokenizer.tokenize(input));
+  }
+}
+
+export abstract class Result<T> {
+  static ok<T>(value: T): Result<T> {
+    return new OK(value);
+  }
+
+  static err<T>(tokens: Token[]): Result<T> {
+    return new Err(tokens);
+  }
+
+  abstract flatMap<U>(func: (value: T) => Result<U>): Result<U>;
+  abstract map<U>(func: (value: T) => U): Result<U>;
+  abstract or(func: () => Result<T>): Result<T>;
+}
+
+class OK<T> extends Result<T> {
+  constructor(readonly _value: T) {
+    super();
+  }
+
+  flatMap<U>(func: (value: T) => Result<U>): Result<U> {
+    return func(this._value);
+  }
+
+  map<U>(func: (value: T) => U): Result<U> {
+    return new OK(func(this._value));
+  }
+
+  or(func: () => Result<T>): Result<T> {
+    return this;
+  }
+}
+
+class Err<T> extends Result<T> {
+  constructor(readonly _tokens: Token[]) {
+    super();
+  }
+
+  flatMap<U>(func: (value: T) => Result<U>): Result<U> {
+    return new Err(this._tokens);
+  }
+
+  map<U>(func: (value: T) => U): Result<U> {
+    return new Err(this._tokens);
+  }
+
+  or(func: () => Result<T>): Result<T> {
+    return func();
   }
 }
