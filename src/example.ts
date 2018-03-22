@@ -71,19 +71,9 @@ class Lisp extends Language<AST> {
     return this.token("rparen");
   }
 
-  _List(): Result<AST[]> {
-    return this.Atom()
-      .flatMap((item: AST) => {
-        return this._List().map((items: AST[]) => [...items, item]);
-      })
-      .or(() => {
-        return Result.ok([]);
-      });
-  }
-
   List(): Result<AST> {
     return this.LParen().flatMap(lp => {
-      return this._List().flatMap(items => {
+      return this.many0(() => this.Atom()).flatMap(items => {
         return this.RParen().map(rp => {
           return new AST("list", items, lp.start, rp.end);
         });

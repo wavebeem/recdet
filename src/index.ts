@@ -150,6 +150,18 @@ export abstract class Parser<AST> {
     return Result.err([this.tokens[i]]);
   }
 
+  many0<T>(func: () => Result<T>): Result<T[]> {
+    return func()
+      .flatMap((item: T) => {
+        return this.many(func).map((items: T[]) => [...items, item]);
+      })
+      .or(() => {
+        return Result.ok([] as T[]);
+      });
+  }
+
+  // TODO: add many1
+
   // TODO: return more information about failures
   parseTokens(tokens: Token[]): Result<AST> {
     this.tokens = tokens;
