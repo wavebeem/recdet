@@ -84,11 +84,8 @@ class Lisp extends Language<AST> {
   List(): Result<AST> {
     const self = this;
     return this.seq(function*() {
-      console.log("==> LP");
       const lp = yield self.LParen();
-      console.log("==> Items");
       const items = yield self.many0(() => self.Atom());
-      console.log("==> RP");
       const rp = yield self.RParen();
       return Result.ok(new AST("list", items, lp.start, rp.end))
     });
@@ -106,9 +103,6 @@ const input = `\
   (add a b))
 `;
 
-// const input = `()`;
-
 console.log(input);
 console.log();
 show(Lisp.parse(input));
-debugger;
