@@ -155,6 +155,9 @@ export abstract class Parser<AST> {
   all<A, B, C>(
     funcs: [() => Result<A>, () => Result<B>, () => Result<C>]
   ): Result<[A, B, C]>;
+  // TODO: Can we use mapped types to take a tuple type for `T` and come up with
+  // the appropriate type for `funcs`? I think this might be possible, but I'm
+  // not really sure.
   all<T>(funcs: (() => Result<T>)[]): Result<T[]> {
     const a: T[] = [];
     for (const f of funcs) {
