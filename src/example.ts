@@ -82,13 +82,11 @@ class Lisp extends Language<AST> {
   // }
 
   List(): Result<AST> {
-    const self = this;
-    return this.seq(function*() {
-      const lp = yield self.LParen();
-      const items = yield self.many0(() => self.Atom());
-      const rp = yield self.RParen();
-      return Result.ok(new AST("list", items, lp.start, rp.end))
-    });
+    return this.all([
+      () => this.LParen(),
+      () => this.many0(() => this.Atom()),
+      () => this.RParen()
+    ]).map(([lp, items, rp]) => new AST("list", items, lp.start, rp.end));
   }
 
   static parse(input: string) {

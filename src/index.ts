@@ -150,18 +150,21 @@ export abstract class Parser<AST> {
     return Result.err([this.tokens[i]]);
   }
 
-  seq<T>(func: () => IterableIterator<Result<any>>): Result<T> {
-    const it = func();
-    let cur = it.next();
-    while (!cur.done) {
-      console.log(cur.value);
-      if (cur.value instanceof Err) {
-        return cur.value;
-      } else {
-        cur = it.next(cur.value);
+  all<A>(funcs: [() => Result<A>]): Result<[A]>;
+  all<A, B>(funcs: [() => Result<A>, () => Result<B>]): Result<[A, B]>;
+  all<A, B, C>(
+    funcs: [() => Result<A>, () => Result<B>, () => Result<C>]
+  ): Result<[A, B, C]>;
+  all<T>(funcs: (() => Result<T>)[]): Result<T[]> {
+    const a: T[] = [];
+    for (const f of funcs) {
+      const r = f();
+      if (r instanceof Err) {
+        return r;
       }
+      r.map(t => a.push(t));
     }
-    return cur.value;
+    return Result.ok(a);
   }
 
   many0<T>(func: () => Result<T>): Result<T[]> {
