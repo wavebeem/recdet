@@ -71,13 +71,26 @@ class Lisp extends Language<AST> {
     return this.token("rparen");
   }
 
+  // List(): Result<AST> {
+  //   return this.LParen().flatMap(lp => {
+  //     return this.many0(() => this.Atom()).flatMap(items => {
+  //       return this.RParen().map(rp => {
+  //         return new AST("list", items, lp.start, rp.end);
+  //       });
+  //     });
+  //   });
+  // }
+
   List(): Result<AST> {
-    return this.LParen().flatMap(lp => {
-      return this.many0(() => this.Atom()).flatMap(items => {
-        return this.RParen().map(rp => {
-          return new AST("list", items, lp.start, rp.end);
-        });
-      });
+    const self = this;
+    return this.seq(function*() {
+      console.log("==> LP");
+      const lp = yield self.LParen();
+      console.log("==> Items");
+      const items = yield self.many0(() => self.Atom());
+      console.log("==> RP");
+      const rp = yield self.RParen();
+      return Result.ok(new AST("list", items, lp.start, rp.end))
     });
   }
 

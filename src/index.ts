@@ -12,7 +12,7 @@ export class Location {
     for (const c of text) {
       if (c === "\n") {
         line++;
-        column = 0;
+        column = 1;
       } else {
         column++;
       }
@@ -150,10 +150,24 @@ export abstract class Parser<AST> {
     return Result.err([this.tokens[i]]);
   }
 
+  seq<T>(func: () => IterableIterator<Result<any>>): Result<T> {
+    const it = func();
+    let cur = it.next();
+    while (!cur.done) {
+      console.log(cur.value);
+      if (cur.value instanceof Err) {
+        return cur.value;
+      } else {
+        cur = it.next(cur.value);
+      }
+    }
+    return cur.value;
+  }
+
   many0<T>(func: () => Result<T>): Result<T[]> {
     return func()
       .flatMap((item: T) => {
-        return this.many(func).map((items: T[]) => [...items, item]);
+        return this.many0(func).map((items: T[]) => [...items, item]);
       })
       .or(() => {
         return Result.ok([] as T[]);
