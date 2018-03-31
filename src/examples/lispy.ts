@@ -15,10 +15,6 @@ class AST {
     readonly end: Location
   ) {}
 
-  static fake(type: string, x: any) {
-    return new AST(type, x, Location.FAKE, Location.FAKE);
-  }
-
   map(f: (x: any) => any) {
     return new AST(this.type, f(this.value), this.start, this.end);
   }

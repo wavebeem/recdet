@@ -9,8 +9,6 @@ export class Location {
     readonly column: number
   ) {}
 
-  static FAKE = new Location(-1, -1, -1);
-
   addChunk(text: string) {
     let { line, column } = this;
     for (const c of text) {
