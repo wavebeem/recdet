@@ -4,14 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "debug": "tsc && node --inspect-brk build/examples/jsonish.js",
-    "start": "tsc && node build/examples/jsonish.js",
+    "debug": "tsc && node --inspect-brk build/examples/jsonish2.js",
+    "start": "tsc && node build/examples/jsonish2.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/parsimmon": "^1.6.1",
+    "parsimmon": "^1.7.1",
     "typescript": "^2.7.2"
   },
   "dependencies": {

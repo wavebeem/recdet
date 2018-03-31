@@ -41,7 +41,7 @@ class JSONish extends Language<AST> {
         () => ctx.match("true", /true/),
         () => ctx.match("false", /false/),
         () => ctx.match("null", /null/),
-        () => ctx.match("string", /"(?:\\["bnfrt]|[^\\\r\n])*"/),
+        () => ctx.match("string", /"(?:\\["bnfrt]|[^\\\r\n"])*"/),
         () => ctx.match("number", /-?[0-9]+\.[0-9]+[eE][+-]?[0-9]+/),
         () => ctx.match("number", /-?[0-9]+\.[0-9]+/),
         () => ctx.match("number", /-?[0-9]+[eE][+-]?[0-9]+/),
@@ -145,7 +145,7 @@ class JSONish extends Language<AST> {
       () => this.sepBy0(() => this._KeyValuePair(), () => this.Comma()),
       () => this.RBrace(),
       (lb, pairs, rb) => new AST("object", fromPairs(pairs), lb.start, rb.end)
-    )
+    );
   }
 
   static parse(input: string) {
@@ -153,7 +153,8 @@ class JSONish extends Language<AST> {
   }
 }
 
-const input = `
+
+const input = `\
 {
   "blah": false,
   "nice": true,
