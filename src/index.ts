@@ -154,21 +154,25 @@ export abstract class Parser<AST> {
     return Result.err([this.tokens[i]]);
   }
 
-  seq<A>(funcs: [() => Result<A>]): Result<[A]>;
-  seq<A, B>(funcs: [() => Result<A>, () => Result<B>]): Result<[A, B]>;
-  seq<A, B, C>(
-    funcs: [() => Result<A>, () => Result<B>, () => Result<C>]
-  ): Result<[A, B, C]>;
-  seq<T>(funcs: (() => Result<T>)[]): Result<T[]> {
-    const a: T[] = [];
-    for (const f of funcs) {
-      const result = f();
-      if (!result.isOK()) {
-        return result.map(x => [x]);
-      }
-      result.map(t => a.push(t));
-    }
-    return Result.ok(a);
+  map2<A, B, R>(
+    fa: () => Result<A>,
+    fb: () => Result<B>,
+    mapper: (a: A, b: B) => R
+  ): Result<R> {
+    return fa().flatMap(a => fb().map(b => mapper(a, b)));
+  }
+
+  map3<A, B, C, R>(
+    fa: () => Result<A>,
+    fb: () => Result<B>,
+    fc: () => Result<C>,
+    mapper: (a: A, b: B, c: C) => R
+  ): Result<R> {
+    return fa().flatMap(a => {
+      return fb().flatMap(b => {
+        return fc().map(c => mapper(a, b, c));
+      });
+    });
   }
 
   many0<T>(func: () => Result<T>): Result<T[]> {

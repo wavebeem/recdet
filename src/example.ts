@@ -46,10 +46,7 @@ class Lisp extends Language<AST> {
   }
 
   default(): Result<AST> {
-    // return this.Atom();
-    const last = <T>(items: T[]) => items[items.length - 1];
-    // return this.many1(() => this.Symbol()).map(last);
-    return this.times(3, 5, () => this.Symbol()).map(last);
+    return this.Atom();
   }
 
   Atom(): Result<AST> {
@@ -85,11 +82,12 @@ class Lisp extends Language<AST> {
   // }
 
   List(): Result<AST> {
-    return this.seq([
+    return this.map3(
       () => this.LParen(),
       () => this.many0(() => this.Atom()),
-      () => this.RParen()
-    ]).map(([lp, items, rp]) => new AST("list", items, lp.start, rp.end));
+      () => this.RParen(),
+      (lp, items, rp) => new AST("list", items, lp.start, rp.end)
+    );
   }
 
   static parse(input: string) {
