@@ -189,6 +189,18 @@ export abstract class Parser<AST> {
     });
   }
 
+  sepBy0<T, U>(func: () => Result<T>, sep: () => Result<U>): Result<T[]> {
+    return this.sepBy1(func, sep).or(() => Result.ok([]));
+  }
+
+  sepBy1<T, U>(func: () => Result<T>, sep: () => Result<U>): Result<T[]> {
+    return this.map2(
+      func,
+      () => this.many0(() => this.map2(sep, func, (u, t) => t)),
+      (first, rest) => [first, ...rest]
+    );
+  }
+
   // // TODO: This implementation is sloppy. Also how useful is this function?
   // times<T>(min: number, max: number, func: () => Result<T>): Result<T[]> {
   //   return this.many0(func).flatMap(items => {
