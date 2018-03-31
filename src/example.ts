@@ -46,7 +46,10 @@ class Lisp extends Language<AST> {
   }
 
   default(): Result<AST> {
-    return this.Atom();
+    // return this.Atom();
+    const last = <T>(items: T[]) => items[items.length - 1];
+    // return this.many1(() => this.Symbol()).map(last);
+    return this.times(3, 5, () => this.Symbol()).map(last);
   }
 
   Atom(): Result<AST> {
@@ -82,7 +85,7 @@ class Lisp extends Language<AST> {
   // }
 
   List(): Result<AST> {
-    return this.all([
+    return this.seq([
       () => this.LParen(),
       () => this.many0(() => this.Atom()),
       () => this.RParen()
@@ -94,12 +97,14 @@ class Lisp extends Language<AST> {
   }
 }
 
-const input = `\
-(list
-  1
-  2
-  (add a b))
-`;
+const input = "a b";
+
+// const input = `\
+// (list
+//   1
+//   2
+//   (add a b))
+// `;
 
 console.log(input);
 console.log();

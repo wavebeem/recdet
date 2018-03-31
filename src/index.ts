@@ -1,3 +1,7 @@
+// TODO: Token[] is not really a good data type for errors to use :\
+// I can't really return them from helpers and it doesn't leave room for any
+// actually good error messages to be added?
+
 export class Location {
   constructor(
     readonly offset: number,
@@ -21,7 +25,7 @@ export class Location {
   }
 
   toString() {
-    return `#<Location offset=${this.offset} line=${this.line} column=${
+    return `<Location offset=${this.offset} line=${this.line} column=${
       this.column
     }>`;
   }
@@ -150,19 +154,19 @@ export abstract class Parser<AST> {
     return Result.err([this.tokens[i]]);
   }
 
-  all<A>(funcs: [() => Result<A>]): Result<[A]>;
-  all<A, B>(funcs: [() => Result<A>, () => Result<B>]): Result<[A, B]>;
-  all<A, B, C>(
+  seq<A>(funcs: [() => Result<A>]): Result<[A]>;
+  seq<A, B>(funcs: [() => Result<A>, () => Result<B>]): Result<[A, B]>;
+  seq<A, B, C>(
     funcs: [() => Result<A>, () => Result<B>, () => Result<C>]
   ): Result<[A, B, C]>;
-  all<T>(funcs: (() => Result<T>)[]): Result<T[]> {
+  seq<T>(funcs: (() => Result<T>)[]): Result<T[]> {
     const a: T[] = [];
     for (const f of funcs) {
-      const r = f();
-      if (r instanceof Err) {
-        return r;
+      const result = f();
+      if (!result.isOK()) {
+        return result.map(x => [x]);
       }
-      r.map(t => a.push(t));
+      result.map(t => a.push(t));
     }
     return Result.ok(a);
   }
@@ -179,9 +183,20 @@ export abstract class Parser<AST> {
 
   many1<T>(func: () => Result<T>): Result<T[]> {
     return func().flatMap(item => {
-      return this.many0(func).map(items => [...items, item])
+      return this.many0(func).map(items => [...items, item]);
     });
   }
+
+  // // TODO: This implementation is sloppy. Also how useful is this function?
+  // times<T>(min: number, max: number, func: () => Result<T>): Result<T[]> {
+  //   return this.many0(func).flatMap(items => {
+  //     const n = items.length;
+  //     if (n < min || n > max) {
+  //       return Result.err(["min/max oopsy"] as any);
+  //     }
+  //     return Result.ok(items);
+  //   })
+  // }
 
   // TODO: return more information about failures
   parseTokens(tokens: Token[]): Result<AST> {
@@ -210,6 +225,7 @@ export abstract class Result<T> {
     return new Err(tokens);
   }
 
+  abstract isOK(): boolean;
   abstract flatMap<U>(func: (value: T) => Result<U>): Result<U>;
   abstract map<U>(func: (value: T) => U): Result<U>;
   abstract or(func: () => Result<T>): Result<T>;
@@ -231,6 +247,10 @@ class OK<T> extends Result<T> {
   or(func: () => Result<T>): Result<T> {
     return this;
   }
+
+  isOK(): boolean {
+    return true;
+  }
 }
 
 class Err<T> extends Result<T> {
@@ -248,5 +268,9 @@ class Err<T> extends Result<T> {
 
   or(func: () => Result<T>): Result<T> {
     return func();
+  }
+
+  isOK(): boolean {
+    return false;
   }
 }
