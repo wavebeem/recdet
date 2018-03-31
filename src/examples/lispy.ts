@@ -1,6 +1,6 @@
 import * as util from "util";
 
-import { Location, Tokenizer, Result, Token, Language } from ".";
+import { Location, Tokenizer, Result, Token, Language } from "..";
 
 function show<T>(value: T) {
   console.log(util.inspect(value, { depth: null, colors: true }));

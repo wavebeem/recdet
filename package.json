@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "debug": "tsc && node --inspect-brk build/example.js",
-    "start": "tsc && node build/example.js",
+    "debug": "tsc && node --inspect-brk build/examples/lispy.js",
+    "start": "tsc && node build/examples/lispy.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
